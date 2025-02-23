@@ -1,0 +1,139 @@
+# Add the shebang line for this script to be executable
+
+import os
+from dataclasses import dataclass
+import sys
+
+from enum import Enum
+
+
+PWD = 'pwd'
+LS = 'ls'
+AMP_DIR = 'amplify'
+
+FOO_BAR_FUNC = '{fooBarFunc}'
+FOO_BAR_DIR = '{fooBarDir}'
+FUNCTION_RESOURCE_FILE = 'define_function.txt'
+FUNCTION_HANDLER_FILE = 'handle_function.txt'
+
+TEXTS = 'texts'
+HANDLER = 'handler.ts'
+RESOURCE = 'resource.ts'
+
+
+CONST_BACKEND = 'const backend = defineBackend({'
+
+
+@dataclass
+class SolutionMethod:
+    exists: bool
+    the_method: str
+
+    def __str__(self, ):
+        return f"{self.the_method} {self.exists}"
+
+
+class Trigger(Enum):
+    auth = 'auth'
+    storage = 'storage'
+    none = 'none'
+
+
+def generate_function(name: str, trigger=Trigger.none.value) -> None:
+    solution_method = is_directory_correct()
+    assert solution_method.exists, "Amplify not found. Are you sure you are in the right directory?"
+    if (solution_method.the_method == LS):
+        os.chdir(os.path.join(os.getcwd(), AMP_DIR))
+
+    match trigger:
+        case Trigger.auth.value:
+            pass
+            #generate trigger auth
+        case Trigger.storage.value:
+            pass
+            #generate trigger storage
+        case Trigger.none.value:
+            function_name = create_function_name(name)
+            import_statement = create_import_statement(function_name, name, 'functions')
+            update_backend(function_name, import_statement)
+            prepare_directory('functions')
+            prepare_directory(name)
+            create_function(function_name, name)
+            #generate none 
+        case _:
+            print("Idk what you want")
+
+
+def create_function_name(directory: str) -> str:
+    return ''.join(map(lambda x : x[1].title() if x[0] != 0 else x[1], enumerate(directory.split('-'))))
+
+
+
+def update_backend(resource_name: str, import_statement: str):
+    data = ''
+    with open('backend.ts', 'r') as f:
+        data = f.readlines()
+        searching_of = list(filter(lambda x: CONST_BACKEND in x, data)).pop()
+        data_to_insert = f'  {resource_name},\n'
+        index_of_data_to_insert = data.index(searching_of) + 1
+        data.insert(index_of_data_to_insert, data_to_insert)
+    data.insert(0, import_statement + '\n')
+    with open('backend.ts', 'w') as f:
+        f.writelines(data)
+
+
+def create_function(name, dir_name):
+    create_function_resource(name, dir_name)
+    create_function_handler()
+
+def create_import_statement(name, dir_name, group):
+    return "import { %s } from './%s/%s/resource'" % (name, group, dir_name)
+
+
+def create_function_resource(name, nameInPath):
+    file1 = open(file_source_path(FUNCTION_RESOURCE_FILE))
+    func_data = file1.read().replace(FOO_BAR_FUNC, name)
+    func_data = func_data.replace(FOO_BAR_DIR, nameInPath)
+    file1.close()
+    with open(RESOURCE, 'a') as f:
+        f.write(func_data)
+
+def create_function_handler():
+    data = ''
+    with open(file_source_path(FUNCTION_HANDLER_FILE), 'r') as f:
+        data = f.read()
+    with open(HANDLER, 'a') as f:
+        f.write(data)
+
+def file_source_path(name_of_file):
+    return os.path.join(os.path.dirname(__file__), TEXTS, name_of_file)
+
+
+def prepare_directory(dir_name: str) -> None:
+    path_of_func_dir = os.path.join(os.getcwd(), dir_name)
+    if (not check_if_directory_exists(dir_name)):
+        os.mkdir(path_of_func_dir)
+    os.chdir(path_of_func_dir)
+
+
+def check_if_directory_exists(dir_name):
+    return bool(list(filter(lambda x: x == dir_name, filter(lambda x: os.path.isdir(x), os.listdir()))))
+
+
+def is_directory_correct() -> SolutionMethod:
+    current_directory: str = os.getcwd().split('/')[-1]
+    if current_directory == AMP_DIR:
+        return SolutionMethod(exists=True, the_method=PWD)
+    folder_ls = list(filter(lambda x: x == AMP_DIR, filter(lambda x: os.path.isdir(x), os.listdir())))
+    return SolutionMethod(exists=True, the_method=LS) if folder_ls else SolutionMethod(exists=False, the_method='')
+
+
+args = sys.argv[1:]
+
+if args.pop(0) == 'function':
+    assert args, "Please enter the name of the folder-function (ex: name-of-function)"
+    name_of_func = args.pop(0)
+    generate_function(name_of_func)
+else:
+    print("Currently supporting only functions")
+

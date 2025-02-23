@@ -1,0 +1,6 @@
+import { defineFunction } from "@aws-amplify/backend";
+    
+export const {fooBarFunc} = defineFunction({
+  name: "{fooBarDir}"
+});
+
