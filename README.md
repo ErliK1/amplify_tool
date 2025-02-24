@@ -21,3 +21,5 @@ in kebab form (the-function-name). If you pass it like that, the script will tak
 This will create the function directory and its resources and handles and will also populate the handle.ts and resource.ts files with the proper data, while it will update the backend.ts with the new additions.
 
 Enjoy!
+
+Python version: 3.13
