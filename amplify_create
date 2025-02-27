@@ -13,8 +13,14 @@ AMP_DIR = 'amplify'
 
 FOO_BAR_FUNC = '{fooBarFunc}'
 FOO_BAR_DIR = '{fooBarDir}'
+FOO_BAR = '{fooBar}'
+FOO_BAR_LAMBDA = '{fooBarLambda}'
+PATH = '{path}'
+FOO_BAR_PATH = '{fooBarPath}'
+
 FUNCTION_RESOURCE_FILE = 'define_function.txt'
 FUNCTION_HANDLER_FILE = 'handle_function.txt'
+BACKEND_REST_FILE = 'backend_restapi.txt'
 
 TEXTS = 'texts'
 HANDLER = 'handler.ts'
@@ -22,6 +28,10 @@ RESOURCE = 'resource.ts'
 
 
 CONST_BACKEND = 'const backend = defineBackend({'
+
+
+BACKEND_OUTPUT = 'backend.addOutput({'
+
 
 
 @dataclass
@@ -36,6 +46,7 @@ class SolutionMethod:
 class Trigger(Enum):
     auth = 'auth'
     storage = 'storage'
+    rest = 'rest'
     none = 'none'
 
 
@@ -52,6 +63,14 @@ def generate_function(name: str, trigger=Trigger.none.value) -> None:
         case Trigger.storage.value:
             pass
             #generate trigger storage
+        case Trigger.rest.value:
+            function_name = create_function_name(name)
+            import_statement = create_import_statement(function_name, name, 'functions')
+            update_backend(function_name, import_statement)
+            update_backend_rest(function_name, name)
+            prepare_directory('functions')
+            prepare_directory(name)
+            create_function(function_name, name)
         case Trigger.none.value:
             function_name = create_function_name(name)
             import_statement = create_import_statement(function_name, name, 'functions')
@@ -60,6 +79,7 @@ def generate_function(name: str, trigger=Trigger.none.value) -> None:
             prepare_directory(name)
             create_function(function_name, name)
             #generate none 
+
         case _:
             print("Idk what you want")
 
@@ -80,6 +100,31 @@ def update_backend(resource_name: str, import_statement: str):
     data.insert(0, import_statement + '\n')
     with open('backend.ts', 'w') as f:
         f.writelines(data)
+
+
+def update_backend_rest(func_name: str, path_name: str):
+    data = []
+    with open('backend.ts', 'r') as f:
+        data = f.readlines()
+    searching_of = list(filter(lambda x: BACKEND_OUTPUT in x, data)).pop()
+    backend_index = data.index(searching_of)
+    backend_static_data = prepare_backend_rest_data(func_name, path_name)
+    data.insert(backend_index - 1, backend_static_data)
+    with open('backend.ts', 'w') as f:
+        f.writelines(data)
+
+
+def prepare_backend_rest_data(func_name: str, path_name: str):
+    lambdaFunction = 'lambda' + func_name[0].upper() + func_name[1:]
+    pathFunction = func_name + 'Path'
+    backend_static_data = ''
+    with open(file_source_path(BACKEND_REST_FILE), 'r') as f:
+        backend_static_data = f.read()
+    backend_static_data = backend_static_data.replace(FOO_BAR, func_name)
+    backend_static_data = backend_static_data.replace(FOO_BAR_LAMBDA, lambdaFunction)
+    backend_static_data = backend_static_data.replace(FOO_BAR_PATH, pathFunction)
+    backend_static_data = backend_static_data.replace(PATH, path_name)
+    return backend_static_data
 
 
 def create_function(name, dir_name):
@@ -133,7 +178,14 @@ args = sys.argv[1:]
 if args.pop(0) == 'function':
     assert args, "Please enter the name of the folder-function (ex: name-of-function)"
     name_of_func = args.pop(0)
-    generate_function(name_of_func)
+    print("Please enter the type of trigger, (rest for REST API Lambda):")
+    trig = input()
+    if trig == Trigger.rest.value:
+        generate_function(name_of_func, Trigger.rest.value)
+    else:
+        generate_function(name_of_func)
 else:
     print("Currently supporting only functions")
+
+
 

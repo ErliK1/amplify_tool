@@ -1,0 +1,16 @@
+const {fooBarLambda} = new LambdaIntegration(
+    backend.{fooBar}.resources.lambda
+)
+
+const {fooBarPath} = restAPI.root.addResource('{path}');
+
+
+{fooBarPath}.addMethod("POST", {fooBarLambda}, {
+                          authorizationType: AuthorizationType.COGNITO, 
+                          authorizer: cognitoAuth});
+
+{fooBarPath}.addProxy({
+    anyMethod: true,
+    defaultIntegration: {fooBarLambda}
+});
+
